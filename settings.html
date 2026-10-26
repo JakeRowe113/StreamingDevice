@@ -1,0 +1,1127 @@
+<!-- settings.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Device Settings</title>
+    <script>
+        (function() {
+            const savedScale = localStorage.getItem('system_display_scale');
+            if (savedScale) {
+                const factor = parseFloat(savedScale) / 100;
+                try {
+                    const { webFrame } = require('electron');
+                    webFrame.setZoomFactor(factor);
+                } catch(e) {
+                    document.documentElement.style.zoom = factor;
+                }
+            }
+        })();
+    </script>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --panel-bg: #141414;
+            --panel-active: #2a2a2a;
+            --text-color: #ffffff;
+            --text-muted: #888888;
+            --accent-color: #ffd700;
+            --danger-color: #ff4757;
+            --success-color: #2ed573;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Sidebar Panel */
+        .sidebar {
+            width: 250px;
+            background-color: var(--panel-bg);
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            padding: 24px 0;
+            box-sizing: border-box;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .home-container {
+            padding: 0 24px 32px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .nav-btn {
+            background-color: var(--bg-color);
+            border-radius: 50%;
+            width: 56px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            box-shadow: 0 4px 6px rgba(255, 255, 255, 0.05);
+            transition: transform 0.1s ease, background-color 0.1s ease;
+            cursor: pointer;
+            border: none;
+        }
+
+        .nav-btn:active {
+            background-color: var(--panel-active);
+            transform: scale(0.95);
+        }
+
+        .nav-btn svg {
+            width: 28px;
+            height: 28px;
+            stroke: var(--accent-color);
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .tabs {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 0 16px;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            padding: 16px;
+            text-align: left;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .tab-btn:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--text-color);
+        }
+
+        .tab-btn.active {
+            background-color: rgba(255, 215, 0, 0.1);
+            color: var(--accent-color);
+        }
+
+        .tab-icon {
+            width: 24px;
+            height: 24px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* Main Content Area */
+        .content {
+            flex-grow: 1;
+            position: relative;
+        }
+
+        .view {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 48px;
+            box-sizing: border-box;
+            display: none;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .view.active {
+            display: flex;
+        }
+
+        h2 {
+            font-weight: 300;
+            margin-top: 0;
+            margin-bottom: 32px;
+            letter-spacing: 2px;
+        }
+
+        /* Settings UI Elements / Cards */
+        .settings-card {
+            background-color: var(--panel-bg);
+            border: 1px solid #333;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-width: 900px;
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #222;
+        }
+
+        .setting-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .setting-label {
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        .setting-sub {
+            display: block;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .setting-value {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .status-badge {
+            background-color: rgba(46, 213, 115, 0.15);
+            color: var(--success-color);
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        /* Form Controls */
+        select.custom-select {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid #333;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+            margin-top: 16px;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #333;
+            border-radius: 3px;
+        }
+
+        /* Progress Bars */
+        .progress-container {
+            width: 100%;
+            height: 12px;
+            background-color: var(--bg-color);
+            border-radius: 6px;
+            overflow: hidden;
+            margin-top: 12px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: var(--accent-color);
+            border-radius: 6px;
+            transition: width 0.3s ease;
+        }
+
+        /* Touch Controls / Buttons */
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-top: 12px;
+            margin-bottom: 48px;
+        }
+
+        .btn {
+            background-color: var(--panel-bg);
+            color: var(--text-color);
+            border: 1px solid #333;
+            padding: 16px 32px;
+            border-radius: 24px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: transform 0.1s ease, background 0.1s ease;
+            font-weight: bold;
+            text-decoration: none;
+            text-align: center;
+            display: inline-block;
+        }
+
+        .btn:active {
+            background-color: var(--panel-active);
+            transform: scale(0.95);
+        }
+
+        .btn-danger {
+            background-color: rgba(255, 71, 87, 0.15);
+            color: var(--danger-color);
+            border-color: rgba(255, 71, 87, 0.3);
+        }
+        
+        .btn-primary {
+            background-color: rgba(255, 215, 0, 0.15);
+            color: var(--accent-color);
+            border-color: rgba(255, 215, 0, 0.3);
+        }
+        
+        .about-content {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .about-title {
+            font-size: 2rem;
+            color: var(--accent-color);
+            margin-bottom: 30px;
+        }
+
+        /* Display Settings Styles */
+        .scale-preset-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid #333;
+            color: #ddd;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .scale-preset-btn:hover {
+            background: rgba(255, 215, 0, 0.15);
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+
+        .aspect-pill {
+            background: rgba(255, 215, 0, 0.15);
+            color: var(--accent-color);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        #confirm-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            z-index: 99999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .confirm-box {
+            background: #18181c;
+            border: 1px solid rgba(255, 215, 0, 0.4);
+            border-radius: 20px;
+            padding: 36px 40px;
+            max-width: 460px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+        <div class="home-container">
+            <a href="index.html" class="nav-btn" aria-label="Home">
+                <svg viewBox="0 0 24 24">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+            </a>
+            <img src="https://resources.jakerowe.me/logos/rowe/logo-white.png" alt="Rowe Logo" style="height: 32px; width: auto; object-fit: contain;">
+        </div>
+        
+        <nav class="tabs">
+            <button class="tab-btn active" data-target="system">
+                <svg class="tab-icon" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                System
+            </button>
+            <button class="tab-btn" data-target="hardware">
+                <svg class="tab-icon" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                Hardware & CPU
+            </button>
+            <button class="tab-btn" data-target="network">
+                <svg class="tab-icon" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
+                Network
+            </button>
+            <button class="tab-btn" data-target="storage">
+                <svg class="tab-icon" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                Storage & RAM
+            </button>
+            <button class="tab-btn" data-target="audio">
+                <svg class="tab-icon" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                Audio & Sound
+            </button>
+            <button class="tab-btn" data-target="display">
+                <svg class="tab-icon" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                Display & Screen
+            </button>
+            <!-- NEW ABOUT TAB BUTTON -->
+            <button class="tab-btn" data-target="about">
+                <svg class="tab-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                About
+            </button>
+        </nav>
+    </aside>
+
+    <main class="content">
+        
+        <!-- SYSTEM TAB -->
+        <div id="system" class="view active">
+            <h2>System Details</h2>
+            <div class="settings-card">
+                <div class="setting-row">
+                    <span class="setting-label">Operating System</span>
+                    <span class="setting-value" id="sys-os">Ubuntu Linux</span>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Kernel Version</span>
+                    <span class="setting-value" id="sys-kernel">Loading...</span>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Display Manager</span>
+                    <span class="setting-value">LightDM Kiosk</span>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Client Runtime</span>
+                    <span class="setting-value" id="sys-electron">Loading...</span>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">System Uptime</span>
+                    <span class="setting-value" id="sys-uptime">Loading...</span>
+                </div>
+            </div>
+            <div class="controls">
+                <button class="btn btn-primary" onclick="alert('Checking for OTA system updates...')">Check for Updates</button>
+                <button class="btn btn-danger" onclick="alert('Reboot command initiated...')">Reboot Device</button>
+                <button class="btn btn-danger" onclick="alert('Shut down sequence started...')">Shut Down</button>
+            </div>
+        </div>
+
+        <!-- HARDWARE & CPU TAB -->
+        <div id="hardware" class="view">
+            <h2>Hardware & CPU Performance</h2>
+            <div class="settings-card">
+                <div class="setting-row">
+                    <div>
+                        <span class="setting-label">Processor (CPU)</span>
+                        <span class="setting-sub" id="cpu-model">Loading processor specs...</span>
+                    </div>
+                    <span class="setting-value" id="cpu-cores">-- Cores</span>
+                </div>
+                <div class="setting-row">
+                    <div>
+                        <span class="setting-label">CPU Load Average</span>
+                        <span class="setting-sub">1m / 5m / 15m intervals</span>
+                    </div>
+                    <span class="setting-value" id="cpu-load">--%</span>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar" id="cpu-bar" style="width: 0%;"></div>
+                </div>
+            </div>
+            <div class="settings-card">
+                <div class="setting-row">
+                    <span class="setting-label">Device Architecture</span>
+                    <span class="setting-value" id="sys-arch">Loading...</span>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Platform Endianness</span>
+                    <span class="setting-value" id="sys-endian">Loading...</span>
+                </div>
+            </div>
+            <div class="controls">
+                <button class="btn btn-primary" onclick="loadHardwareInfo()">Refresh Hardware Stats</button>
+            </div>
+        </div>
+
+        <!-- NETWORK TAB -->
+        <div id="network" class="view">
+            <h2>Network & Connectivity</h2>
+            <div class="settings-card">
+                <div class="setting-row">
+                    <span class="setting-label">Connection Status</span>
+                    <span class="status-badge" id="net-status">Online</span>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Assigned Local IP</span>
+                    <span class="setting-value" id="net-ip">Scanning...</span>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Device Hostname</span>
+                    <span class="setting-value" id="net-hostname">Loading...</span>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Network Interface Name</span>
+                    <span class="setting-value" id="net-interface">Loading...</span>
+                </div>
+            </div>
+            <div class="controls">
+                <button class="btn btn-primary" onclick="loadNetworkInfo()">Scan Interfaces</button>
+            </div>
+        </div>
+
+        <!-- STORAGE & RAM TAB -->
+        <div id="storage" class="view">
+            <h2>Storage & Memory Utilization</h2>
+            <div class="settings-card">
+                <div class="setting-row">
+                    <div>
+                        <span class="setting-label">System Memory (RAM)</span>
+                        <span class="setting-sub" id="ram-sub">Active allocation</span>
+                    </div>
+                    <span class="setting-value" id="ram-val">-- GB / -- GB</span>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar" id="ram-bar" style="width: 0%;"></div>
+                </div>
+            </div>
+            <div class="settings-card">
+                <div class="setting-row">
+                    <div>
+                        <span class="setting-label">Root Partition Storage</span>
+                        <span class="setting-sub">Filesystem mount (/)</span>
+                    </div>
+                    <span class="setting-value" id="disk-val">Loading...</span>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar" id="disk-bar" style="width: 0%;"></div>
+                </div>
+            </div>
+            <div class="controls">
+                <button class="btn btn-danger" onclick="alert('Temporary application cache and log files cleared.')">Clear App Cache</button>
+            </div>
+        </div>
+
+        <!-- AUDIO TAB -->
+        <div id="audio" class="view">
+            <h2>Audio & Sound</h2>
+            
+            <div class="settings-card">
+                <div class="setting-row">
+                    <div>
+                        <span class="setting-label">Master Volume</span>
+                        <span class="setting-sub">Adjust global system output level</span>
+                    </div>
+                    <span class="setting-value" id="vol-val">--%</span>
+                </div>
+                <div style="padding: 12px 0;">
+                    <input type="range" id="volume-slider" min="0" max="100" value="50" oninput="updateVolume(this.value)">
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <div class="setting-row">
+                    <div>
+                        <span class="setting-label">Output Source</span>
+                        <span class="setting-sub">Select active audio hardware</span>
+                    </div>
+                    <select id="audio-source" class="custom-select" onchange="setAudioSource(this.value)">
+                        <option value="default">Default System Audio</option>
+                        <option value="hdmi">HDMI / DisplayPort</option>
+                        <option value="analog">Analog Stereo (3.5mm)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-primary" onclick="testAudio()">Play Test Sound</button>
+            </div>
+        </div>
+        
+        <!-- DISPLAY & SCREEN TAB -->
+        <div id="display" class="view">
+            <h2>Display & Screen Settings</h2>
+
+            <!-- CARD 1: DISPLAY SELECTION -->
+            <div class="settings-card">
+                <div class="setting-row">
+                    <div>
+                        <span class="setting-label">Connected Display</span>
+                        <span class="setting-sub" id="display-sub">Select active output device</span>
+                    </div>
+                    <select id="display-select" class="custom-select" onchange="onDisplaySelected()">
+                        <option value="HDMI-1">HDMI-1 (Primary TV / Monitor)</option>
+                    </select>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Display Status</span>
+                    <span class="status-badge" id="display-status">Active / Primary</span>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Output Interface</span>
+                    <span class="setting-value" id="display-interface">HDMI / Kiosk Display</span>
+                </div>
+            </div>
+
+            <!-- CARD 2: RESOLUTION & ASPECT RATIO -->
+            <div class="settings-card">
+                <div class="setting-row">
+                    <div>
+                        <span class="setting-label">Screen Resolution</span>
+                        <span class="setting-sub">Resolution and calculated aspect ratio</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <span id="aspect-ratio-pill" class="aspect-pill">16:9 Widescreen</span>
+                        <select id="resolution-select" class="custom-select" onchange="updateAspectPill()">
+                            <option value="3840x2160">3840 × 2160 (16:9 - 4K UHD)</option>
+                            <option value="2560x1440">2560 × 1440 (16:9 - 2K QHD)</option>
+                            <option value="1920x1080" selected>1920 × 1080 (16:9 - 1080p FHD - Recommended)</option>
+                            <option value="1680x1050">1680 × 1050 (16:10 - WSXGA+)</option>
+                            <option value="1600x900">1600 × 900 (16:9 - HD+)</option>
+                            <option value="1366x768">1366 × 768 (16:9 - WXGA)</option>
+                            <option value="1280x720">1280 × 720 (16:9 - 720p HD)</option>
+                            <option value="1920x1200">1920 × 1200 (16:10 - WUXGA)</option>
+                            <option value="2560x1080">2560 × 1080 (21:9 - UltraWide)</option>
+                            <option value="3440x1440">3440 × 1440 (21:9 - UWQHD)</option>
+                            <option value="1280x1024">1280 × 1024 (5:4 - SXGA)</option>
+                            <option value="1024x768">1024 × 768 (4:3 - XGA Standard)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-row">
+                    <div>
+                        <span class="setting-label">Refresh Rate</span>
+                        <span class="setting-sub">Display refresh frequency</span>
+                    </div>
+                    <select id="refresh-rate-select" class="custom-select">
+                        <option value="60">60 Hz (Standard 60p)</option>
+                        <option value="120">120 Hz (High Refresh)</option>
+                        <option value="144">144 Hz (Gaming)</option>
+                        <option value="59.94">59.94 Hz (NTSC Broadcast)</option>
+                        <option value="50">50 Hz (PAL Broadcast)</option>
+                        <option value="30">30 Hz (4K Legacy)</option>
+                    </select>
+                </div>
+
+                <div class="setting-row">
+                    <span class="setting-label">Current Active Geometry</span>
+                    <span class="setting-value" id="current-geom-val">1920 × 1080 @ 60Hz</span>
+                </div>
+            </div>
+
+            <!-- CARD 3: DISPLAY SCALING -->
+            <div class="settings-card">
+                <div class="setting-row">
+                    <div>
+                        <span class="setting-label">Display Scaling (UI Zoom)</span>
+                        <span class="setting-sub">Scale UI elements for 10-foot living room couch viewing</span>
+                    </div>
+                    <span class="setting-value" id="scale-val" style="color: var(--accent-color); font-weight: 700;">100%</span>
+                </div>
+                
+                <div style="padding: 12px 0;">
+                    <input type="range" id="scale-slider" min="80" max="200" step="5" value="100" oninput="onScaleSliderChange(this.value)">
+                </div>
+
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+                    <button class="scale-preset-btn" onclick="setScale(100)">100% (Default)</button>
+                    <button class="scale-preset-btn" onclick="setScale(125)">125% (Comfortable)</button>
+                    <button class="scale-preset-btn" onclick="setScale(150)">150% (Living Room TV)</button>
+                    <button class="scale-preset-btn" onclick="setScale(175)">175% (Large TV)</button>
+                    <button class="scale-preset-btn" onclick="setScale(200)">200% (4K Ultra TV)</button>
+                </div>
+            </div>
+
+            <!-- CARD 4: DISPLAY ORIENTATION -->
+            <div class="settings-card">
+                <div class="setting-row">
+                    <div>
+                        <span class="setting-label">Display Orientation</span>
+                        <span class="setting-sub">Screen rotation</span>
+                    </div>
+                    <select id="orientation-select" class="custom-select">
+                        <option value="normal">Normal (Landscape 0°)</option>
+                        <option value="inverted">Inverted (Landscape 180°)</option>
+                        <option value="left">Left (Portrait 90°)</option>
+                        <option value="right">Right (Portrait 270°)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-primary" onclick="applyDisplaySettings()">Apply Display Settings</button>
+                <button class="btn" onclick="detectDisplays()">Scan Displays</button>
+                <button class="btn" onclick="resetDisplayDefaults()">Reset to Defaults</button>
+            </div>
+        </div>
+        
+        <!-- NEW ABOUT TAB -->
+        <div id="about" class="view">
+            <h2>About</h2>
+            
+            <div class="settings-card about-content">
+                <h3 class="about-title">Made with Love, Jake Rowe</h3>
+                <div class="controls" style="justify-content: center;">
+                    <a href="viewer.html?url=https://www.jakerowe.me" class="btn btn-primary">Homepage</a>
+                    <a href="viewer.html?url=https://www.rowenetwork.com" class="btn btn-primary">Rowe Network</a>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Tab switching logic
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const views = document.querySelectorAll('.view');
+
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                tabBtns.forEach(b => b.classList.remove('active'));
+                views.forEach(v => v.classList.remove('active'));
+                
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.target).classList.add('active');
+            });
+        });
+
+        // Node.js Direct Integrations
+        const os = require('os');
+        const { execSync } = require('child_process');
+
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        // 1. System Info
+        function loadSystemInfo() {
+            document.getElementById('sys-os').innerText = `${os.type()} ${os.release()}`;
+            document.getElementById('sys-kernel').innerText = os.release();
+            document.getElementById('sys-electron').innerText = `Electron ${process.versions.electron || '28.0'} (Node ${process.versions.node})`;
+
+            const uptimeSecs = os.uptime();
+            const days = Math.floor(uptimeSecs / (3600*24));
+            const hours = Math.floor((uptimeSecs % (3600*24)) / 3600);
+            const minutes = Math.floor((uptimeSecs % 3600) / 60);
+            document.getElementById('sys-uptime').innerText = `${days}d ${hours}h ${minutes}m`;
+        }
+
+        // 2. Hardware Info & CPU Load
+        function loadHardwareInfo() {
+            const cpus = os.cpus();
+            if (cpus && cpus.length > 0) {
+                document.getElementById('cpu-model').innerText = cpus[0].model.trim();
+                document.getElementById('cpu-cores').innerText = `${cpus.length} Cores`;
+            }
+            document.getElementById('sys-arch').innerText = `${os.arch().toUpperCase()} (${os.platform()})`;
+            document.getElementById('sys-endian').innerText = os.endianness();
+
+            const loads = os.loadavg();
+            const cpuCount = cpus.length || 1;
+            const loadPercent = Math.min(Math.round((loads[0] / cpuCount) * 100), 100);
+            
+            document.getElementById('cpu-load').innerText = `${loadPercent}% (1m avg: ${loads[0].toFixed(2)})`;
+            document.getElementById('cpu-bar').style.width = `${loadPercent}%`;
+        }
+
+        // 3. Network Metrics
+        function loadNetworkInfo() {
+            document.getElementById('net-hostname').innerText = os.hostname();
+            const interfaces = os.networkInterfaces();
+            let localIP = '127.0.0.1';
+            let activeInterface = 'lo';
+            
+            for (const devName in interfaces) {
+                const iface = interfaces[devName];
+                for (let i = 0; i < iface.length; i++) {
+                    const alias = iface[i];
+                    if (alias.family === 'IPv4' && !alias.internal) {
+                        localIP = alias.address;
+                        activeInterface = devName;
+                        break;
+                    }
+                }
+            }
+            document.getElementById('net-ip').innerText = localIP;
+            document.getElementById('net-interface').innerText = activeInterface;
+        }
+
+        // 4. Storage & Memory Metrics
+        function loadStorageInfo() {
+            const totalMem = os.totalmem();
+            const freeMem = os.freemem();
+            const usedMem = totalMem - freeMem;
+            const memPercent = Math.round((usedMem / totalMem) * 100);
+
+            document.getElementById('ram-sub').innerText = `Free: ${formatBytes(freeMem)} / Total: ${formatBytes(totalMem)}`;
+            document.getElementById('ram-val').innerText = `${formatBytes(usedMem)} (${memPercent}%)`;
+            document.getElementById('ram-bar').style.width = `${memPercent}%`;
+
+            try {
+                const dfOutput = execSync("df -k / | tail -1").toString().trim().split(/\s+/);
+                const totalKb = parseInt(dfOutput[1]) * 1024;
+                const usedKb = parseInt(dfOutput[2]) * 1024;
+                const diskPercent = parseInt(dfOutput[4]);
+
+                document.getElementById('disk-val').innerText = `${formatBytes(usedKb)} / ${formatBytes(totalKb)} (${diskPercent}% Used)`;
+                document.getElementById('disk-bar').style.width = `${diskPercent}%`;
+            } catch (e) {
+                document.getElementById('disk-val').innerText = 'Storage metric unavailable';
+            }
+        }
+
+        // 5. Audio Controls
+        function initAudio() {
+            try {
+                // Fetch the actual current system volume string on load and isolate the percentage
+                const volString = execSync("amixer sget Master | grep -m1 -o -E '[0-9]+%' | sed 's/%//'").toString().trim();
+                if (volString && !isNaN(volString)) {
+                    document.getElementById('volume-slider').value = volString;
+                    document.getElementById('vol-val').innerText = `${volString}%`;
+                }
+            } catch (e) {
+                console.warn("Could not fetch initial volume:", e);
+                // Keep default HTML fallback value if command fails
+                document.getElementById('vol-val').innerText = document.getElementById('volume-slider').value + "%";
+            }
+        }
+
+        function updateVolume(value) {
+            document.getElementById('vol-val').innerText = `${value}%`;
+            try {
+                execSync(`amixer sset Master ${value}%`);
+            } catch (e) {
+                console.error("Volume adjustment failed:", e);
+            }
+        }
+
+        function setAudioSource(sourceVal) {
+            try {
+                const sinkName = sourceVal === 'hdmi' ? 'alsa_output.pci-0000_00_1f.3.hdmi-stereo' : 'alsa_output.pci-0000_00_1f.3.analog-stereo';
+                if (sourceVal !== 'default') {
+                    execSync(`pacmd set-default-sink ${sinkName}`);
+                }
+            } catch (e) {
+                console.error("Source switching failed.", e);
+            }
+        }
+
+        function testAudio() {
+            try {
+                execSync('paplay /usr/share/sounds/alsa/Front_Center.wav');
+            } catch (e) {
+                alert('Audio test ping initiated.');
+            }
+        }
+
+        // 6. Display Settings Integration
+        let revertTimeout = null;
+        let countdownInterval = null;
+        let previousResolution = '1920x1080';
+        let previousRate = '60';
+
+        function calculateAspectRatio(w, h) {
+            function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+            const divisor = gcd(w, h);
+            const ratio = `${w / divisor}:${h / divisor}`;
+            const decimal = w / h;
+            if (Math.abs(decimal - (16 / 9)) < 0.02) return '16:9 Widescreen';
+            if (Math.abs(decimal - (16 / 10)) < 0.02) return '16:10';
+            if (Math.abs(decimal - (21 / 9)) < 0.05) return '21:9 UltraWide';
+            if (Math.abs(decimal - (4 / 3)) < 0.02) return '4:3 Standard';
+            if (Math.abs(decimal - (5 / 4)) < 0.02) return '5:4';
+            return ratio;
+        }
+
+        function updateAspectPill() {
+            const resVal = document.getElementById('resolution-select').value;
+            const parts = resVal.split('x').map(Number);
+            if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                const ratioText = calculateAspectRatio(parts[0], parts[1]);
+                document.getElementById('aspect-ratio-pill').innerText = ratioText;
+            }
+        }
+
+        function detectDisplays() {
+            const select = document.getElementById('display-select');
+            select.innerHTML = '';
+            let detected = [];
+
+            try {
+                const output = execSync('xrandr --query 2>/dev/null').toString();
+                const lines = output.split('\n');
+                let currentDisp = null;
+
+                lines.forEach(line => {
+                    const match = line.match(/^([A-Za-z0-9\-_]+)\s+(connected|disconnected)(\s+primary)?\s*([0-9]+x[0-9]+)?/);
+                    if (match) {
+                        const name = match[1];
+                        const connected = match[2] === 'connected';
+                        const isPrimary = !!match[3];
+                        const curRes = match[4] || null;
+                        if (connected) {
+                            currentDisp = { name, isPrimary, curRes, modes: [] };
+                            detected.push(currentDisp);
+                        } else {
+                            currentDisp = null;
+                        }
+                    } else if (currentDisp && line.match(/^\s+([0-9]+x[0-9]+)/)) {
+                        const m = line.match(/^\s+([0-9]+x[0-9]+)/);
+                        if (m && !currentDisp.modes.includes(m[1])) {
+                            currentDisp.modes.push(m[1]);
+                        }
+                    }
+                });
+            } catch (e) {
+                console.warn("xrandr query failed or non-X11 environment:", e.message);
+            }
+
+            if (detected.length === 0) {
+                detected.push({
+                    name: 'HDMI-1',
+                    isPrimary: true,
+                    curRes: `${window.screen.width}x${window.screen.height}`,
+                    modes: ['3840x2160', '2560x1440', '1920x1080', '1680x1050', '1600x900', '1366x768', '1280x720']
+                });
+            }
+
+            detected.forEach((disp, idx) => {
+                const opt = document.createElement('option');
+                opt.value = disp.name;
+                opt.innerText = `${disp.name} ${disp.isPrimary ? '(Primary TV / Monitor)' : '(Secondary Display)'}`;
+                select.appendChild(opt);
+            });
+
+            const savedDisplay = localStorage.getItem('system_display_output');
+            if (savedDisplay && [...select.options].some(o => o.value === savedDisplay)) {
+                select.value = savedDisplay;
+            }
+
+            onDisplaySelected();
+        }
+
+        function onDisplaySelected() {
+            const dispName = document.getElementById('display-select').value;
+            document.getElementById('display-status').innerText = 'Connected & Active';
+            
+            let ifaceText = 'HDMI Output';
+            if (dispName.toLowerCase().includes('dp')) ifaceText = 'DisplayPort';
+            else if (dispName.toLowerCase().includes('edp')) ifaceText = 'Internal eDP Screen';
+            else if (dispName.toLowerCase().includes('vga')) ifaceText = 'VGA Analog';
+            document.getElementById('display-interface').innerText = `${ifaceText} (${dispName})`;
+        }
+
+        function onScaleSliderChange(val) {
+            setScale(val);
+        }
+
+        function setScale(scale) {
+            document.getElementById('scale-val').innerText = `${scale}%`;
+            document.getElementById('scale-slider').value = scale;
+            
+            const factor = parseFloat(scale) / 100;
+            try {
+                const { webFrame } = require('electron');
+                webFrame.setZoomFactor(factor);
+            } catch (e) {
+                document.documentElement.style.zoom = factor;
+            }
+            localStorage.setItem('system_display_scale', scale);
+        }
+
+        function updateCurrentGeomDisplay() {
+            const res = localStorage.getItem('system_display_res') || `${window.screen.width} × ${window.screen.height}`;
+            const rate = localStorage.getItem('system_display_rate') || '60';
+            const parts = res.replace('×', 'x').split('x').map(s => s.trim());
+            const ratio = (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) ? calculateAspectRatio(parseInt(parts[0]), parseInt(parts[1])) : '16:9';
+            document.getElementById('current-geom-val').innerText = `${parts.join(' × ')} @ ${rate}Hz (${ratio})`;
+        }
+
+        function applyDisplaySettings() {
+            const display = document.getElementById('display-select').value;
+            const res = document.getElementById('resolution-select').value;
+            const rate = document.getElementById('refresh-rate-select').value;
+            const orient = document.getElementById('orientation-select').value;
+
+            previousResolution = localStorage.getItem('system_display_res') || '1920x1080';
+            previousRate = localStorage.getItem('system_display_rate') || '60';
+
+            try {
+                execSync(`xrandr --output ${display} --mode ${res} --rate ${rate} --rotate ${orient} 2>/dev/null`);
+            } catch (e) {
+                console.warn("xrandr execution note:", e.message);
+            }
+
+            localStorage.setItem('system_display_res', res);
+            localStorage.setItem('system_display_output', display);
+            localStorage.setItem('system_display_rate', rate);
+            localStorage.setItem('system_display_orientation', orient);
+
+            updateCurrentGeomDisplay();
+            showConfirmationModal();
+        }
+
+        function showConfirmationModal() {
+            const modal = document.getElementById('confirm-modal');
+            const timerEl = document.getElementById('countdown-timer');
+            modal.style.display = 'flex';
+
+            let secondsLeft = 15;
+            timerEl.innerText = secondsLeft;
+
+            clearInterval(countdownInterval);
+            clearTimeout(revertTimeout);
+
+            countdownInterval = setInterval(() => {
+                secondsLeft--;
+                timerEl.innerText = secondsLeft;
+                if (secondsLeft <= 0) {
+                    clearInterval(countdownInterval);
+                    revertDisplayChanges();
+                }
+            }, 1000);
+        }
+
+        function keepDisplayChanges() {
+            clearInterval(countdownInterval);
+            clearTimeout(revertTimeout);
+            document.getElementById('confirm-modal').style.display = 'none';
+        }
+
+        function revertDisplayChanges() {
+            clearInterval(countdownInterval);
+            clearTimeout(revertTimeout);
+            document.getElementById('confirm-modal').style.display = 'none';
+
+            const display = document.getElementById('display-select').value;
+            try {
+                execSync(`xrandr --output ${display} --mode ${previousResolution} --rate ${previousRate} 2>/dev/null`);
+            } catch (e) {}
+
+            localStorage.setItem('system_display_res', previousResolution);
+            localStorage.setItem('system_display_rate', previousRate);
+            document.getElementById('resolution-select').value = previousResolution;
+            document.getElementById('refresh-rate-select').value = previousRate;
+            updateAspectPill();
+            updateCurrentGeomDisplay();
+        }
+
+        function resetDisplayDefaults() {
+            setScale(100);
+            document.getElementById('resolution-select').value = '1920x1080';
+            document.getElementById('refresh-rate-select').value = '60';
+            document.getElementById('orientation-select').value = 'normal';
+            updateAspectPill();
+            applyDisplaySettings();
+        }
+
+        function initDisplaySettings() {
+            detectDisplays();
+
+            const savedRes = localStorage.getItem('system_display_res') || '1920x1080';
+            const savedRate = localStorage.getItem('system_display_rate') || '60';
+            const savedOrient = localStorage.getItem('system_display_orientation') || 'normal';
+            const savedScale = localStorage.getItem('system_display_scale') || '100';
+
+            const resSelect = document.getElementById('resolution-select');
+            if ([...resSelect.options].some(o => o.value === savedRes)) {
+                resSelect.value = savedRes;
+            }
+            document.getElementById('refresh-rate-select').value = savedRate;
+            document.getElementById('orientation-select').value = savedOrient;
+
+            setScale(parseInt(savedScale));
+            updateAspectPill();
+            updateCurrentGeomDisplay();
+        }
+
+        // Initialize all metrics on load
+        loadSystemInfo();
+        loadHardwareInfo();
+        loadNetworkInfo();
+        loadStorageInfo();
+        initAudio();
+        initDisplaySettings();
+
+        // Background metric refreshing interval
+        setInterval(() => {
+            loadStorageInfo();
+            loadHardwareInfo();
+        }, 5000);
+    </script>
+
+    <!-- CONFIRMATION MODAL FOR DISPLAY RESOLUTION CHANGES -->
+    <div id="confirm-modal">
+        <div class="confirm-box">
+            <h3 style="margin-top: 0; color: var(--accent-color); font-size: 1.5rem;">Keep Display Settings?</h3>
+            <p style="color: #ccc; line-height: 1.6; margin: 16px 0;">New resolution and refresh rate applied. Reverting back to previous settings in <b id="countdown-timer" style="color: #fff; font-size: 1.25rem;">15</b> seconds.</p>
+            <div style="display: flex; gap: 16px; justify-content: center; margin-top: 24px;">
+                <button class="btn btn-primary" onclick="keepDisplayChanges()">Keep Changes</button>
+                <button class="btn btn-danger" onclick="revertDisplayChanges()">Revert Now</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

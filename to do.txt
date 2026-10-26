@@ -1,0 +1,7 @@
+Now
+- Add "Watch now" to the fullscreen view in stats.html
+
+
+Long Term:
+- Add all of the sports that ESPN supports in stats.html
+- Remote control options

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Viewer</title>
+    <script>
+        (function() {
+            const savedScale = localStorage.getItem('system_display_scale');
+            if (savedScale) {
+                const factor = parseFloat(savedScale) / 100;
+                try {
+                    const { webFrame } = require('electron');
+                    webFrame.setZoomFactor(factor);
+                } catch(e) {
+                    document.documentElement.style.zoom = factor;
+                }
+            }
+        })();
+    </script>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --panel-bg: rgba(20, 20, 20, 0.85);
+            --panel-active: #2a2a2a;
+            --text-color: #ffffff;
+            --accent-color: #ffd700;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        webview {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            background-color: #ffffff;
+            z-index: 1;
+        }
+
+        #hover-trigger {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 40px;
+            height: 100vh;
+            z-index: 9998; 
+        }
+
+        .flyout-wrapper {
+            position: fixed;
+            top: 50%; /* Defaults to middle on fresh load */
+            left: 32px; 
+            transform: translateY(-50%); 
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid #333;
+            border-radius: 32px;
+            padding: 4px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+            width: 56px; 
+            height: 56px;
+            box-sizing: border-box;
+            overflow: hidden;
+            transition: height 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.4s ease, transform 0.4s ease;
+            opacity: 1;
+        }
+
+        .flyout-wrapper.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(-30px, -50%); 
+        }
+
+        .flyout-wrapper:hover,
+        .flyout-wrapper.active {
+            height: 340px; /* Increased to fit the new drag button */
+        }
+
+        /* Disable smooth transitions while dragging so it sticks to the mouse perfectly */
+        .flyout-wrapper.dragging {
+            transition: none !important; 
+        }
+
+        .menu-items {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            opacity: 0;
+            margin-top: 8px;
+            margin-left: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .flyout-wrapper:hover .menu-items,
+        .flyout-wrapper.active .menu-items {
+            opacity: 1;
+            pointer-events: auto;
+            transition-delay: 0.1s;
+        }
+
+        .nav-btn {
+            background-color: transparent;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+
+        .nav-btn:hover {
+            background-color: var(--panel-active);
+        }
+
+        .nav-btn:active {
+            transform: scale(0.9);
+        }
+
+        .nav-btn svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--text-color);
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: stroke 0.2s ease;
+        }
+
+        .nav-btn:hover svg {
+            stroke: var(--accent-color);
+        }
+
+        .trigger-btn svg {
+            transition: transform 0.4s ease;
+        }
+
+        .flyout-wrapper:hover .trigger-btn svg,
+        .flyout-wrapper.active .trigger-btn svg {
+            transform: rotate(90deg);
+            stroke: var(--accent-color);
+        }
+
+        /* Styling for the drag handle */
+        .drag-handle {
+            cursor: grab;
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+    </style>
+</head>
+<body>
+
+    <webview id="viewer-frame" allowpopups></webview>
+
+    <div id="hover-trigger"></div>
+
+    <div class="flyout-wrapper" id="flyoutMenu" onclick="toggleMenu()">
+        <!-- Trigger Button -->
+        <button class="nav-btn trigger-btn" aria-label="Menu" onclick="event.stopPropagation(); toggleMenu()">
+            <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="1"></circle>
+                <circle cx="19" cy="12" r="1"></circle>
+                <circle cx="5" cy="12" r="1"></circle>
+            </svg>
+        </button>
+
+        <!-- Hidden Menu Items -->
+        <div class="menu-items">
+            <!-- Drag Handle -->
+            <div class="nav-btn drag-handle" title="Drag to move" onmousedown="startDrag(event)">
+                <svg viewBox="0 0 24 24">
+                    <line x1="8" y1="10" x2="16" y2="10" stroke-width="2" stroke-linecap="round"></line>
+                    <line x1="8" y1="14" x2="16" y2="14" stroke-width="2" stroke-linecap="round"></line>
+                </svg>
+            </div>
+
+            <!-- Home -->
+            <a href="index.html" class="nav-btn" title="Home" onclick="event.stopPropagation();">
+                <svg viewBox="0 0 24 24">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+            </a>
+
+            <!-- Back -->
+            <button onclick="event.stopPropagation(); window.history.back()" class="nav-btn" title="Go Back">
+                <svg viewBox="0 0 24 24">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+            </button>
+
+            <!-- Forward -->
+            <button onclick="event.stopPropagation(); window.history.forward()" class="nav-btn" title="Go Forward">
+                <svg viewBox="0 0 24 24">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </button>
+
+            <!-- Refresh -->
+            <button onclick="event.stopPropagation(); refreshFrame()" class="nav-btn" title="Refresh">
+                <svg viewBox="0 0 24 24">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <polyline points="1 20 1 14 7 14"></polyline>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetUrl = urlParams.get('url');
+        const isTv = urlParams.get('ua') === 'tv';
+        const viewer = document.getElementById('viewer-frame');
+
+        if (isTv) {
+            viewer.setAttribute('useragent', 'Mozilla/5.0 (SMART-TV; Linux; Tizen 5.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/5.0 NativeTV/5.0 Safari/538.1');
+        }
+
+        if (targetUrl) {
+            viewer.src = targetUrl;
+        }
+
+        function refreshFrame() {
+            viewer.reload();
+        }
+
+        function toggleMenu() {
+            flyout.classList.toggle('active');
+            resetHideTimer(); 
+        }
+
+        // --- Auto Hide Logic ---
+        let hideTimeout;
+        const flyout = document.getElementById('flyoutMenu');
+        const hoverTrigger = document.getElementById('hover-trigger');
+
+        function resetHideTimer() {
+            clearTimeout(hideTimeout);
+            flyout.classList.remove('hidden'); 
+            
+            hideTimeout = setTimeout(() => {
+                // Do not hide if hovering or currently dragging
+                if (!flyout.matches(':hover') && !isDragging) {
+                    flyout.classList.add('hidden');
+                    flyout.classList.remove('active'); 
+                }
+            }, 3000); 
+        }
+
+        hoverTrigger.addEventListener('mouseenter', resetHideTimer);
+        flyout.addEventListener('mouseenter', resetHideTimer);
+        flyout.addEventListener('mouseleave', resetHideTimer);
+        resetHideTimer();
+
+        // --- Drag Logic ---
+        let isDragging = false;
+        let startY = 0;
+        let startTop = 0;
+
+        function startDrag(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            isDragging = true;
+            flyout.classList.add('dragging');
+            
+            // Get current top position (accounting for the translateY(-50%) offset)
+            const rect = flyout.getBoundingClientRect();
+            startTop = rect.top + (rect.height / 2);
+            startY = e.clientY;
+
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('mouseup', stopDrag);
+            
+            // Pause auto-hide while dragging
+            clearTimeout(hideTimeout);
+        }
+
+        function onDrag(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+            
+            let dy = e.clientY - startY;
+            let newTop = startTop + dy;
+            
+            // Constrain the menu so it can't be dragged off the top or bottom of the screen
+            const halfHeight = flyout.offsetHeight / 2;
+            if (newTop < halfHeight) newTop = halfHeight;
+            if (newTop > window.innerHeight - halfHeight) newTop = window.innerHeight - halfHeight;
+            
+            flyout.style.top = newTop + 'px';
+        }
+
+        function stopDrag(e) {
+            isDragging = false;
+            flyout.classList.remove('dragging');
+            document.removeEventListener('mousemove', onDrag);
+            document.removeEventListener('mouseup', stopDrag);
+            resetHideTimer(); // Resume auto-hide after dropping
+        }
+    </script>
+</body>
+</html>
