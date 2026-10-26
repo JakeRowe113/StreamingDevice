@@ -2,4 +2,4 @@ A custom electron app that runs on Ubuntu via LightDM
 
 Vibecoded by Google Gemini and Antigravity
 
-Designed to be controlled with a second, tablet-like device running the same setup.
+Will be designed to be controlled with a second, tablet-like device running the same setup.
