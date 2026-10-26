@@ -1,4 +1,4 @@
-A custom streaming device that runs on electron via lightdm
+A custom streaming device that runs on electron via lightdm on Ubuntu
 
 These are the node files
 
